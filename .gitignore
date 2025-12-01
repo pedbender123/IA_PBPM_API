@@ -1,0 +1,30 @@
+# Arquivos de Ambiente (SEGURANÇA CRÍTICA)
+.env
+.env.local
+
+# Python / Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambientes Virtuais (se rodar localmente fora do Docker)
+venv/
+.venv/
+env/
+
+# Banco de Dados SQLite (Dados locais e logs não devem ir pro git)
+*.db
+*.sqlite3
+app/data/
+
+# Logs
+*.log
+
+# Docker (volumes locais temporários, se houver)
+ollama_storage/
+
+# IDEs e Editores
+.vscode/
+.idea/
+.DS_Store

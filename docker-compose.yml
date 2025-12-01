@@ -10,7 +10,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 26G
+          memory: 28G
     expose:
       - "11434"
 
@@ -18,16 +18,17 @@ services:
     build: ./app
     container_name: ai_guard
     restart: always
-    environment:
-      - OLLAMA_URL=http://ollama:11434
-      # Lembra de colocar aquela senha que você inventou aqui
-      - API_KEY=pbpm-Fg0fLaJluB0FUsCfrmfkkbd5AyLst0rr2Aeq2T1unKA5ZmqrwMAPO3vQQULrsLgD
+    # Carrega variáveis do arquivo .env
+    env_file:
+      - .env
     depends_on:
       - ollama
     ports:
-      # Mapeia a porta 8000 do container para a 8000 LOCAL da VPS
-      # Assim, o firewall externo não acessa, só o Nginx local.
       - "127.0.0.1:1111:8000"
+    volumes:
+      # Volume para persistir o banco de dados SQLite (chaves e logs)
+      - api_guard_data:/app/data
 
 volumes:
   ollama_storage:
+  api_guard_data:
