@@ -191,9 +191,43 @@ async def preload_model(request: Request, auth: dict = Depends(verify_credential
     return {"status": "ready", "model": model_name, "message": "Modelo carregado e memória limpa."}
 
 @app.post("/admin/create_key")
-def create_key(request: Request, auth: dict = Depends(verify_credentials)):
-    # ... (mesma implementação anterior para criar chaves) ...
-    pass 
+async def create_key(request: Request, auth: dict = Depends(verify_credentials)):
+    # Verifica se quem está pedindo é o ADMIN (Chave Mestra)
+    if auth["type"] != "master":
+        raise HTTPException(status_code=403, detail="Apenas a chave Mestra pode criar novas chaves.")
+    
+    try:
+        body = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="JSON inválido")
+
+    # Campos Obrigatórios (apenas para registro/organização)
+    name = body.get("name")
+    email = body.get("email")
+    
+    if not name or not email:
+        raise HTTPException(status_code=400, detail="Campos 'name' e 'email' são obrigatórios para organização.")
+    
+    # Gera uma chave única aleatória
+    raw_token = secrets.token_urlsafe(48)
+    new_key = f"pbpm-{raw_token}"
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        # Insere no banco. Como não há UNIQUE no email, ele aceita repetições livremente.
+        c.execute("INSERT INTO api_keys (key, name, email, created_at) VALUES (?, ?, ?, ?)",
+                  (new_key, name, email, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar: {str(e)}")
+    
+    return {
+        "message": "Chave criada com sucesso", 
+        "api_key": new_key, 
+        "registered_to": {"name": name, "email": email}
+    } 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def gateway(path: str, request: Request, auth: dict = Depends(verify_credentials)):
