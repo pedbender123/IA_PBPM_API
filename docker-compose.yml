@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_engine
+    restart: always
+    volumes:
+      - ollama_storage:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 26G
+    expose:
+      - "11434"
+
+  api-guard:
+    build: ./app
+    container_name: ai_guard
+    restart: always
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      # Lembra de colocar aquela senha que você inventou aqui
+      - API_KEY=pbpm-Fg0fLaJluB0FUsCfrmfkkbd5AyLst0rr2Aeq2T1unKA5ZmqrwMAPO3vQQULrsLgD
+    depends_on:
+      - ollama
+    ports:
+      # Mapeia a porta 8000 do container para a 8000 LOCAL da VPS
+      # Assim, o firewall externo não acessa, só o Nginx local.
+      - "127.0.0.1:1111:8000"
+
+volumes:
+  ollama_storage:
