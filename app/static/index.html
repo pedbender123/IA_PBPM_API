@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PBPM AI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ícones Phosphor para botões bonitos -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>
         tailwind.config = {
             theme: { extend: { colors: { pbpm: '#1e293b' } } }
@@ -18,8 +20,8 @@
         <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
             <h2 class="text-2xl font-bold mb-4 text-center text-pbpm">Acesso Administrativo</h2>
             <p class="mb-4 text-sm text-gray-600 text-center">Insira a chave MESTRA definida no servidor.</p>
-            <input type="password" id="masterKeyInput" class="w-full p-3 border rounded mb-4" placeholder="pbpm-master-key...">
-            <button onclick="saveKeyAndLogin()" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-bold">Entrar</button>
+            <input type="password" id="masterKeyInput" class="w-full p-3 border rounded mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="pbpm-master-key...">
+            <button onclick="saveKeyAndLogin()" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-bold transition">Entrar</button>
         </div>
     </div>
 
@@ -27,53 +29,76 @@
     <div class="container mx-auto p-6 hidden" id="mainContent">
         
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-pbpm">PBPM AI Gateway</h1>
+                <h1 class="text-3xl font-bold text-pbpm flex items-center gap-2">
+                    <i class="ph ph-cpu text-blue-600"></i> PBPM AI Gateway
+                </h1>
                 <p class="text-gray-500">Painel de Controle e Auditoria</p>
             </div>
-            <button onclick="logout()" class="text-sm text-red-500 hover:underline">Sair (Limpar Chave)</button>
+            <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 flex items-center gap-1 px-3 py-2 border border-red-200 rounded hover:bg-red-50 transition">
+                <i class="ph ph-sign-out"></i> Sair
+            </button>
         </header>
 
         <!-- Criar Nova Chave -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-xl font-bold mb-4 flex items-center">
-                <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-2">NOVO</span>
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8 border-l-4 border-green-500">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <i class="ph ph-plus-circle text-green-600"></i>
                 Gerar Nova Chave de Cliente
             </h2>
             <form onsubmit="createKey(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input type="text" id="newName" placeholder="Nome do Cliente / App" class="border p-2 rounded" required>
-                <input type="email" id="newEmail" placeholder="Email de Referência" class="border p-2 rounded" required>
-                <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 font-bold">Gerar Chave</button>
+                <input type="text" id="newName" placeholder="Nome do Cliente / App" class="border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" required>
+                <input type="email" id="newEmail" placeholder="Email de Referência" class="border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" required>
+                <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 font-bold flex items-center justify-center gap-2 transition">
+                    <i class="ph ph-key"></i> Gerar Chave
+                </button>
             </form>
-            <div id="newKeyResult" class="hidden mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm break-all">
-                <p class="font-bold text-yellow-800">Chave Gerada (Copie agora):</p>
-                <p id="generatedKeyDisplay" class="font-mono text-lg select-all text-gray-800 mt-1"></p>
+            
+            <!-- Resultado da Nova Chave -->
+            <div id="newKeyResult" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded relative">
+                <p class="font-bold text-green-800 text-sm mb-1">Chave Criada com Sucesso:</p>
+                <div class="flex items-center gap-2 bg-white p-2 rounded border border-green-100">
+                    <code id="generatedKeyDisplay" class="font-mono text-green-700 text-lg flex-1 break-all"></code>
+                    <button onclick="copyText('generatedKeyDisplay')" class="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-100 transition" title="Copiar">
+                        <i class="ph ph-copy text-xl"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- Estatísticas das Chaves -->
         <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-bold mb-4">Relatório de Uso por Cliente</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="ph ph-users text-blue-600"></i> Clientes e Uso
+                </h2>
+                <button onclick="loadStats()" class="text-blue-600 hover:bg-blue-50 p-2 rounded-full transition" title="Atualizar">
+                    <i class="ph ph-arrows-clockwise text-xl"></i>
+                </button>
+            </div>
+            
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-50 border-b">
-                            <th class="p-3">Cliente</th>
-                            <th class="p-3">Email</th>
-                            <th class="p-3">Chave (Inicio)</th>
-                            <th class="p-3 text-right">Reqs</th>
-                            <th class="p-3 text-right">Prompt Tokens</th>
-                            <th class="p-3 text-right">Resp. Tokens</th>
+                        <tr class="bg-gray-50 border-b text-gray-600 text-sm uppercase tracking-wider">
+                            <th class="p-3">Cliente / Email</th>
+                            <th class="p-3">Chave de API</th>
+                            <th class="p-3 text-right">Requisições</th>
                             <th class="p-3 text-right">Total Tokens</th>
                         </tr>
                     </thead>
-                    <tbody id="clientsTableBody">
+                    <tbody id="clientsTableBody" class="divide-y divide-gray-100">
                         <!-- JS vai popular aqui -->
                     </tbody>
                 </table>
             </div>
         </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg transform translate-y-20 opacity-0 transition-all duration-300">
+        Copiado para a área de transferência!
     </div>
 
     <script>
@@ -118,7 +143,7 @@
                 renderTable(data.clients);
             } catch (e) {
                 console.error(e);
-                alert("Erro ao carregar dados.");
+                // alert("Erro ao carregar dados. Verifique o console.");
             }
         }
 
@@ -126,17 +151,33 @@
             const tbody = document.getElementById('clientsTableBody');
             tbody.innerHTML = '';
             
-            clients.forEach(c => {
+            clients.forEach((c, index) => {
                 const tr = document.createElement('tr');
-                tr.className = "border-b hover:bg-gray-50";
+                tr.className = "hover:bg-blue-50 transition-colors group";
+                
+                // Formatação da Chave
+                const keyId = `key-${index}`;
+                
                 tr.innerHTML = `
-                    <td class="p-3 font-medium">${c.name}</td>
-                    <td class="p-3 text-gray-600">${c.email}</td>
-                    <td class="p-3 font-mono text-xs text-gray-400">${c.key.substring(0, 15)}...</td>
-                    <td class="p-3 text-right font-bold text-blue-600">${c.request_count}</td>
-                    <td class="p-3 text-right text-gray-600">${c.total_prompt.toLocaleString()}</td>
-                    <td class="p-3 text-right text-gray-600">${c.total_eval.toLocaleString()}</td>
-                    <td class="p-3 text-right font-bold text-green-700">${(c.total_prompt + c.total_eval).toLocaleString()}</td>
+                    <td class="p-3 align-top">
+                        <div class="font-bold text-gray-800">${c.name}</div>
+                        <div class="text-xs text-gray-500">${c.email}</div>
+                        <div class="text-xs text-gray-400 mt-1">${new Date(c.created_at).toLocaleDateString()}</div>
+                    </td>
+                    <td class="p-3 align-top">
+                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded p-1.5 max-w-md">
+                            <code id="${keyId}" class="font-mono text-xs text-blue-700 break-all select-all">${c.key}</code>
+                            <button onclick="copyText('${keyId}')" class="text-gray-400 hover:text-blue-600 p-1 rounded transition flex-shrink-0" title="Copiar Chave">
+                                <i class="ph ph-copy text-lg"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-3 text-right font-medium text-gray-600 align-top">${c.request_count}</td>
+                    <td class="p-3 text-right align-top">
+                        <div class="font-bold text-green-700">${(c.total_prompt + c.total_eval).toLocaleString()}</div>
+                        <div class="text-xs text-gray-400">Prompt: ${c.total_prompt.toLocaleString()}</div>
+                        <div class="text-xs text-gray-400">Eval: ${c.total_eval.toLocaleString()}</div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -174,6 +215,23 @@
             } catch (e) {
                 alert(e.message);
             }
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast();
+            }).catch(err => {
+                console.error('Erro ao copiar: ', err);
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
         }
 
         // Init
