@@ -1,0 +1,232 @@
+📘 PBPM AI Gateway - Documentação Oficial
+
+Visão Geral
+
+Esta API atua como um Gateway Inteligente e Firewall para infraestrutura de LLMs locais (Ollama). Ela adiciona camadas de segurança, auditoria e gerenciamento avançado de memória VRAM, permitindo a execução eficiente de múltiplos modelos em hardware limitado.
+
+Principais Funcionalidades:
+
+Autenticação: Segregação entre Admin (Criação de chaves) e Clientes (Inferência).
+
+Gestão de VRAM: Mantém modelos leves sempre ativos e alterna modelos pesados sob demanda ("Heavy Swap").
+
+Auditoria: Registro de tokens consumidos e data/hora por chave de cliente.
+
+Auto-Discovery: Detecção automática de modelos instalados no Ollama.
+
+🔐 Autenticação
+
+A API utiliza autenticação via Bearer Token no Header das requisições. Existem dois tipos de chaves com permissões distintas:
+
+Tipo de Chave
+
+Prefixo
+
+Permissões
+
+Restrições
+
+Mestra (Admin)
+
+(Definida no .env)
+
+Criar novas chaves de cliente.
+
+NÃO pode realizar inferência (chat/generate).
+
+Cliente (User)
+
+pbpm-...
+
+Realizar inferência, listar modelos, preload.
+
+Não pode criar novas chaves.
+
+Exemplo de Header:
+
+Authorization: Bearer pbpm-seu-token-aqui
+
+
+🛠️ Endpoints Administrativos
+
+Requer: Chave Mestra
+
+1. Criar Nova Chave (POST /admin/create_key)
+
+Gera uma nova credencial de acesso para uma aplicação ou usuário. O email pode ser repetido para gerar múltiplas chaves para o mesmo dono.
+
+Body (JSON):
+
+{
+  "name": "Nome da Aplicação",
+  "email": "contato@dominio.com"
+}
+
+
+Resposta (200 OK):
+
+{
+  "message": "Criado",
+  "api_key": "pbpm-8f7d6a...", 
+  "registered_to": {
+    "name": "Nome da Aplicação",
+    "email": "contato@dominio.com"
+  }
+}
+
+
+⚙️ Endpoints de Sistema e Utilitários
+
+Requer: Chave de Cliente
+
+2. Listar Modelos (GET /api/available_models)
+
+Retorna o catálogo de modelos disponíveis e seu status de memória.
+
+Resposta (200 OK):
+
+{
+  "models": [
+    {
+      "name": "llama3.2:3b",
+      "size": 2000000000,
+      "type": "always_on" 
+    },
+    {
+      "name": "qwen2.5:32b",
+      "size": 19000000000,
+      "type": "on_demand"
+    }
+  ]
+}
+
+
+always_on: Modelos leves que estão sempre carregados na RAM/VRAM (Resposta instantânea).
+
+on_demand: Modelos pesados que requerem carregamento prévio.
+
+3. Preload / Aquecimento (POST /preload)
+
+Instrui a API a carregar um modelo pesado na memória antes da inferência.
+Isso aciona o sistema de "Heavy Swap", descarregando outros modelos pesados para liberar espaço.
+
+Body (JSON):
+
+{
+  "model": "qwen2.5:32b"
+}
+
+
+Resposta (200 OK):
+
+{
+  "status": "ready",
+  "model": "qwen2.5:32b"
+}
+
+
+💬 Endpoints de Inferência (Ollama Proxy)
+
+Requer: Chave de Cliente
+
+A API repassa as requisições para o Ollama, mas antes executa:
+
+Validação da Chave.
+
+Verificação de memória (se o modelo não estiver carregado, ele carrega automaticamente, o que pode adicionar delay).
+
+Contagem de Tokens na resposta.
+
+4. Chat Completion (POST /api/chat)
+
+Compatível com a API de Chat do Ollama/OpenAI.
+
+Body (JSON):
+
+{
+  "model": "llama3.2:3b",
+  "messages": [
+    { "role": "user", "content": "Olá, analise este documento..." }
+  ],
+  "stream": true
+}
+
+
+5. Generate (POST /api/generate)
+
+Para completação de texto simples (Raw completion).
+
+Body (JSON):
+
+{
+  "model": "codestral:latest",
+  "prompt": "def hello_world():",
+  "stream": false
+}
+
+
+🧠 Comportamento de Memória (Smart VRAM)
+
+Para respeitar o limite de memória (ex: 26GB) do container, a API segue regras estritas:
+
+Zona Segura (Always On): Modelos definidos no .env (ex: llama3.2:3b) nunca são descarregados. Eles residem permanentemente na memória para respostas rápidas.
+
+Zona Exclusiva (Heavy Swap): Apenas UM modelo pesado (não listado no .env) pode rodar por vez.
+
+Se codestral está rodando e você pede qwen2.5, a API derruba o codestral imediatamente e sobe o qwen2.5.
+
+Recomendação: Use o endpoint /preload 5-10 segundos antes de precisar de um modelo pesado para evitar timeouts na chamada de inferência.
+
+🚦 Códigos de Erro Comuns
+
+Código
+
+Significado
+
+Causa Provável
+
+401
+
+Unauthorized
+
+Chave de API inválida ou ausente.
+
+403
+
+Forbidden
+
+Tentativa de usar Chave Mestra para endpoint de Chat/Preload.
+
+500
+
+Internal Error
+
+Erro de conexão com container Ollama ou falha no Banco de Dados.
+
+400
+
+Bad Request
+
+JSON mal formatado ou campos obrigatórios faltando.
+
+🐍 Exemplo de Uso (Python)
+
+import requests
+
+API_URL = "[https://ia.pbpmdev.com](https://ia.pbpmdev.com)"
+API_KEY = "pbpm-sua-chave-cliente-aqui"
+
+headers = {"Authorization": f"Bearer {API_KEY}"}
+
+# 1. (Opcional) Preload de modelo pesado
+requests.post(f"{API_URL}/preload", json={"model": "codestral:latest"}, headers=headers)
+
+# 2. Chamada de Chat
+payload = {
+    "model": "codestral:latest",
+    "messages": [{"role": "user", "content": "Crie uma função fibonacci em Python"}],
+    "stream": False
+}
+
+response = requests.post(f"{API_URL}/api/chat", json=payload, headers=headers)
+print(response.json()['message']['content'])
