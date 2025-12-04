@@ -205,7 +205,8 @@ async def gateway(path: str, request: Request, auth: dict = Depends(verify_crede
         client_req_content = body_stream()
 
     client = httpx.AsyncClient(base_url=OLLAMA_URL)
-    url = httpx.URL(path=path, query=request.url.query.encode("utf-8"))
+    # Correção: Adicionamos f"api/{path}" para reconstruir a URL correta (/api/chat)
+    url = httpx.URL(path=f"api/{path}", query=request.url.query.encode("utf-8"))
     req = client.build_request(request.method, url, headers=request.headers.raw, content=client_req_content, timeout=300.0)
     
     try: r = await client.send(req, stream=True)
